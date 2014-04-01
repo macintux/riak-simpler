@@ -13,18 +13,6 @@ new_set(List) ->
                riakc_set:new(),
                List).
 
-%% Set = riakc_set:new().
-
-%% SetBucket = {<<"sets">>, <<"food!">>}.
-
-%% Set2 = riakc_set:add_element(<<"eggs">>, Set).
-
-%% Set3 = riakc_set:add_element(<<"bacon">>, Set2).
-
-%% riakc_set:to_op(Set3).
-
-%% riakc_pb_socket:update_type(Pid, SetBucket, <<"breakfast">>, riakc_set:to_op(Set3), [return_body]).
-
 add() ->
     fun(Set, Value) ->
             riakc_set:add_element(l2b(Value), Set)
@@ -38,16 +26,27 @@ del() ->
 mult(Riak, Bucket, Bool) ->
     riakc_pb_socket:set_bucket(Riak, l2b(Bucket), [{allow_mult, Bool}]).
 
+check_get({error, notfound}) ->
+    notfound;
+check_get({error, {notfound, _}}) ->
+    notfound;
+check_get({ok, Obj}) ->
+    Obj.
+
+interpret_obj(notfound) ->
+    [];
+interpret_obj(Obj) ->
+    lists:map(fun(X) -> unicode:characters_to_list(X) end, riakc_obj:get_values(Obj)).
+
+
+
 get(Riak) ->
     fun(Bucket, Key, raw) ->
-            {ok, Obj} = riakc_pb_socket:get(Riak, l2b(Bucket), l2b(Key)),
-            Obj;
+            check_get(riakc_pb_socket:get(Riak, l2b(Bucket), l2b(Key)));
        (Bucket, Key, value) ->
-            {ok, Obj} = riakc_pb_socket:get(Riak, l2b(Bucket), l2b(Key)),
-            lists:map(fun(X) -> unicode:characters_to_list(X) end, riakc_obj:get_values(Obj));
+            interpret_obj(check_get(riakc_pb_socket:get(Riak, l2b(Bucket), l2b(Key))));
        (Bucket, Key, set) ->
-            {ok, Obj} = riakc_pb_socket:fetch_type(Riak, l2b(Bucket), l2b(Key)),
-            Obj
+            check_get(riakc_pb_socket:fetch_type(Riak, l2b(Bucket), l2b(Key)))
     end.
 
 update(Riak) ->
