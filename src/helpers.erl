@@ -38,16 +38,16 @@ del() ->
 mult(Riak, Bucket, Bool) ->
     riakc_pb_socket:set_bucket(Riak, l2b(Bucket), [{allow_mult, Bool}]).
 
-%% Need a way to fetch sets distinctly from objects
-%% riakc_pb_socket:fetch_type(Pid, SetBucket, <<"breakfast">>).
-
 get(Riak) ->
     fun(Bucket, Key, raw) ->
             {ok, Obj} = riakc_pb_socket:get(Riak, l2b(Bucket), l2b(Key)),
             Obj;
        (Bucket, Key, value) ->
             {ok, Obj} = riakc_pb_socket:get(Riak, l2b(Bucket), l2b(Key)),
-            lists:map(fun(X) -> unicode:characters_to_list(X) end, riakc_obj:get_values(Obj))
+            lists:map(fun(X) -> unicode:characters_to_list(X) end, riakc_obj:get_values(Obj));
+       (Bucket, Key, set) ->
+            {ok, Obj} = riakc_pb_socket:fetch_type(Riak, l2b(Bucket), l2b(Key)),
+            Obj
     end.
 
 update(Riak) ->
